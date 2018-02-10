@@ -10,20 +10,21 @@
 //////////////////////////////////////
 // Constructors and Destructor
 //////////////////////////////////////
-wlib::Json::Json(const std::string & json_str)
-	: shp_err_str(std::make_shared<std::string>()), first_flag_(true)
+wlib::Json::Json(const std::string & json_str, std::string * message)
+	: err_str_("")
 {
 	//public constructor
-	*this->shp_err_str = picojson::parse(this->json_value, json_str);
+	this->err_str_ = picojson::parse(this->json_value, json_str);
+	if (message != nullptr) *message = this->err_str_;
 }
 
-wlib::Json::Json(const picojson::value & v, const std::shared_ptr<std::string> & shp_err_str)
-	: json_value(v), shp_err_str(shp_err_str), first_flag_(false)
+wlib::Json::Json(const picojson::value & v, const std::string & err_str)
+	: json_value(v), err_str_(err_str)
 {
 }
 
 wlib::Json::Json(const Json & copy)
-	: json_value(copy.json_value), shp_err_str(copy.shp_err_str), first_flag_(copy.first_flag_)
+	: json_value(copy.json_value), err_str_(copy.err_str_)
 {
 }
 
@@ -36,15 +37,13 @@ wlib::Json::~Json()
 ///////////////////////////////////////
 wlib::Json wlib::Json::operator[](const std::string & key)
 {
-	if (this->first_flag_) this->shp_err_str->clear();	//error clear;
-
 	if (!this->failed()) {
 		if (this->json_value.is<picojson::object>()) {
 			picojson::object tobj = this->json_value.get<picojson::object>();
-			if (tobj.count(key) > 0)	return Json(tobj[key], this->shp_err_str);
-			else						{ *this->shp_err_str = "No key"; return Json(this->json_value, this->shp_err_str); }
+			if (tobj.count(key) > 0)	return Json(tobj[key], this->err_str_);
+			else						return Json(this->json_value, "No Key");
 		}
-		else							{ *this->shp_err_str = "Not Object"; return Json(this->json_value, this->shp_err_str); }
+		else							return Json(this->json_value, "Not Object");
 	}
 
 	//Error
@@ -53,71 +52,67 @@ wlib::Json wlib::Json::operator[](const std::string & key)
 
 wlib::Json wlib::Json::operator[](const std::size_t & index)
 {
-	if (this->first_flag_) this->shp_err_str->clear();	//error clear;
-
 	if (!this->failed()) {
 		if (this->json_value.is<picojson::array>()) {
 			picojson::array tarray = this->json_value.get<picojson::array>();
-			if (tarray.size() > index)	return Json(tarray.at(index), this->shp_err_str);
-			else						{ *this->shp_err_str = "Index Out Of Bounds"; return Json(this->json_value, this->shp_err_str); }
+			if (tarray.size() > index)	return Json(tarray.at(index), this->err_str_);
+			else						return Json(this->json_value, "Index Out Of Bounds");
 		}
-		else							{ *this->shp_err_str = "Not Array"; return Json(this->json_value, this->shp_err_str); }
+		else							return Json(this->json_value, "Not Array");
 	}
 
 	//Error
 	return *this;
 }
 
-
-
 /////////////////////////////////////////
 // Value Accessor
 /////////////////////////////////////////
 template<typename T>
-T wlib::Json::get(const T & default_val)
+T wlib::Json::get(const T & default_val, std::string * error_message) const
 {
 	if (!this->failed()) {
 		if (this->json_value.is<T>()) {
 			return this->json_value.get<T>();
 		}
-		*this->shp_err_str = "Mismatched Type.";
+		if(error_message != nullptr) *error_message = "Mismatched Type.";
 	}
+	else if (error_message != nullptr) *error_message = this->err_str_;
 	return default_val;
 }
 
-template double wlib::Json::get<double>(const double & default_value);
-template bool wlib::Json::get<bool>(const bool & default_flag);
-template std::string wlib::Json::get<std::string>(const std::string & default_str);
+template double wlib::Json::get<double>(const double & default_value, std::string * error_message) const;
+template bool wlib::Json::get<bool>(const bool & default_flag, std::string * error_message) const;
+template std::string wlib::Json::get<std::string>(const std::string & default_str, std::string * error_message) const;
 
 
-double wlib::Json::num(const double & default_value)
+double wlib::Json::num(const double & default_value, std::string * error_message) const
 {
-	return this->get<double>(default_value);
+	return this->get<double>(default_value, error_message);
 }
 
-std::string wlib::Json::str(const std::string & default_str)
+std::string wlib::Json::str(const std::string & default_str, std::string * error_message) const
 {
-	return this->get<std::string>(default_str);
+	return this->get<std::string>(default_str, error_message);
 }
 
-bool wlib::Json::is(const bool default_flag)
+bool wlib::Json::is(const bool default_flag, std::string * error_message) const
 {
-	return this->get<bool>(default_flag);
+	return this->get<bool>(default_flag, error_message);
 }
 
-std::size_t wlib::Json::size()
+std::size_t wlib::Json::size(std::string * error_message) const
 {
-	if (this->first_flag_) this->shp_err_str->clear();	//error clear;
-
 	if (!this->failed()) {
 		if (this->json_value.is<picojson::array>()) {
 			picojson::array tarray = this->json_value.get<picojson::array>();
 			return tarray.size();
 		}
-		else { *this->shp_err_str = "Not Array"; return 0; }
+		if (error_message != nullptr) *error_message = "Not Array";
 	}
+	else if (error_message != nullptr) *error_message = this->err_str_;
 
-	//Error
+	//error return
 	return 0;
 }
 
@@ -126,14 +121,10 @@ std::size_t wlib::Json::size()
 // Error
 /////////////////////////////////////////
 
-bool wlib::Json::failed(std::string * message = nullptr) const
+bool wlib::Json::failed(std::string * message) const
 {
-	if (this->shp_err_str) {
-		if (message != nullptr) *message = *this->shp_err_str;
-		return !this->shp_err_str->empty();
-	}
-	else if (message != nullptr) *message = "";
-	return false;
+	if (message != nullptr) *message = this->err_str_;
+	return !this->err_str_.empty();
 }
 
 

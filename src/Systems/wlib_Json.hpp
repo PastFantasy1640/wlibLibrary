@@ -26,7 +26,7 @@ public:
 	 * Jsonクラスでは、例えばファイルからの読み込み関数などは実装していません。必ずしもファイルから読み込むのがすべてではないからです。
 	 * @param json_str jsonテキスト
 	 */
-	explicit Json(const std::string & json_str);
+	explicit Json(const std::string & json_str, std::string * message = nullptr);
 
 	/** デストラクタ
 	 * 今のところNOPです。
@@ -45,29 +45,32 @@ public:
 	 */
 	Json operator[](const std::size_t & index);
 
+	//Json at(const std::string & key) const;
+	//Json at(const std::size_t & index) const;
+
 	/** その要素を数値として読み出します。
 	 * @param default_value 読み込みに失敗した場合にはこの数値がそのまま戻されます。
 	 * @returns 読み出された数値
 	 */
-	double num(const double & default_value = 0.0);
+	double num(const double & default_value = 0.0, std::string * error_message = nullptr) const;
 
 	/** その要素を文字列として読み出します。
 	 * @param default_str 読み込みに失敗した場合にはこの文字列がそのまま戻されます。
 	 * @returns 読み出された文字列
 	 */
-	std::string str(const std::string & default_str = "");
+	std::string str(const std::string & default_str = "", std::string * error_message = nullptr) const;
 
 
 	/** その要素をフラグ値として読み出します。
 	 * @param default_flag 読み込みに失敗した場合にはこのフラグ値がそのまま戻されます。
 	 * @returns 読み出されたフラグ
 	 */
-	bool is(const bool default_flag = false);
+	bool is(const bool default_flag = false, std::string * error_message = nullptr) const;
 
 	/** その要素が配列である場合、そのサイズを返します。スカラ要素に使用した場合は失敗フラグが立ち、0が返されます。この失敗フラグはfailed関数で参照できます。
 	 * @return 配列のサイズ
 	 */
-	std::size_t size(void);
+	std::size_t size(std::string * error_message = nullptr) const;
 
 	/** 数値を設定します。
 	 * 存在するキーが指定された場合は、その要素へ上書き保存され、キーが存在しない場合は新しく作成されます。複数階層にわたる新規キー設定でも正しく動作します。
@@ -76,7 +79,6 @@ public:
 	void set(const double & value);
 	void set(const std::string & str);
 	void set(const bool flag);
-
 
 
 	///////////////////////
@@ -104,18 +106,16 @@ public:
 
 private:
 	Json();
-	Json(const picojson::value & v, const std::shared_ptr<std::string> & shp_err_str);
+	Json(const picojson::value & v, const std::string & err_str);
 	Json(const Json & copy);
 
-	template<typename T> T get(const T & default_val);
+	template<typename T> T get(const T & default_val, std::string * error_message) const;
 
 
 	////////////////////////
 	// Member Variable
 	////////////////////////
-	std::shared_ptr<std::string> shp_err_str;
-	//std::shared_ptr<bool> shp_first_flag;
-	const bool first_flag_;
+	std::string err_str_;
 
 	picojson::value json_value;
 	
@@ -123,13 +123,5 @@ private:
 };
 
 };
-
-//INLINE FUNCTIONS
-inline bool wlib::Json::isError(void) const{
-	if (this->shp_err_str) {
-		return !this->shp_err_str->empty();
-	}
-	return false;
-}
 
 #endif
