@@ -100,11 +100,11 @@ public:
 	 * @param message エラーメッセージを取得したい場合のみ、文字列ポインタを与えてください
 	 * @returns 直前の動作に失敗したならtrue
 	 */
-	bool failed(std::string * message = nullptr);
+	bool failed(std::string * message = nullptr) const;
 
 private:
 	Json();
-	Json(const picojson::value & v, const std::shared_ptr<std::string> & shp_err_str, const std::shared_ptr<bool> & shp_first_flag);
+	Json(const picojson::value & v, const std::shared_ptr<std::string> & shp_err_str);
 	Json(const Json & copy);
 
 	template<typename T> T get(const T & default_val);
@@ -114,9 +114,11 @@ private:
 	// Member Variable
 	////////////////////////
 	std::shared_ptr<std::string> shp_err_str;
-	std::shared_ptr<bool> shp_first_flag;
+	//std::shared_ptr<bool> shp_first_flag;
+	const bool first_flag_;
 
 	picojson::value json_value;
+	
 
 };
 
