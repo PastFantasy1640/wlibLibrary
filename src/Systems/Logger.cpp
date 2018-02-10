@@ -48,7 +48,7 @@ void wlib::Logger::changeLogLevel(LogLevel log_level) {
 	this->log_level_ = log_level;
 }
 
-void wlib::Logger::_write(const std::string & status, const std::string & text, const bool is_cerr = false){
+void wlib::Logger::_write(const std::string & status, const std::string & text, const bool is_cerr){
 	//[status] Thread:(thread_no) 2017-10-15 03:47:24 <tag> | [text]
 	//______________________________________________________| [multi text]
 
